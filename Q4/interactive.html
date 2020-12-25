@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<!-- run: http-server & -->
+<!-- run in the terminal : python -m http.server 8888 & -->
+<!-- To kill local server:      (here is which local server)
+                                  |
+                                  V
+run in terminal: sudo lsof -iTCP:8080 -sTCP:LISTEN
+Then run: kill -9 PIN_number -->
+<meta charset="utf-8">
+
+<style type="text/css">
+
+  .line {
+      fill: none;
+      stroke: #ffab00;
+      stroke-width: 3;
+  }
+    
+  .overlay {
+    fill: none;
+    pointer-events: all;
+  }
+
+  .dot {
+      fill: #ffab00;
+      stroke: #fff;
+  }
+    
+    .focus circle {
+    fill: none;
+    stroke: steelblue;
+  }
+
+</style>
+<head>
+  <title>Interactive Visualization</title>
+</head>
+<body>
+  <div id="container"></div>
+</body>
+
+  <!-- Load in the d3 library -->
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+
+  <script>
+
+  // we need the foloowing year's data
+  var data_need = ["2015", "2016", "2017", "2018", "2019"];
+
+  var color = d3.scaleOrdinal().range(d3.schemeCategory10);
+
+  var parseYear = d3.timeParse("%Y");
+  var formatTime = d3.timeFormat("%Y");
+
+  // reference from Q3 tutorial
+  var margin = {top: 50, right: 50, bottom: 50, left: 50},
+      width = window.innerWidth - margin.left - margin.right, 
+      height = window.innerHeight - margin.top - margin.bottom; 
+
+  // initial define array for storing data
+  var data_total = 0,
+      data_eachYear = {},
+      top_5_user_rated = {},
+      data_count = {},
+      max_rating = 0,
+      max_count = 0;
+
+  for (var i = 0; i < data_need.length; i++) {
+    data_eachYear[data_need[i]] = [];
+  }
+
+  // load in the data
+  d3.dsv(",", "average-rating.csv").then(function(data){
+
+      data.forEach(function(d) { 
+          d.name = d.name;
+          d.year = parseYear(d.year);
+          d.average_rating = Math.floor(d.average_rating);
+          d.users_rated = + d.users_rated;
+      })
+
+      // total data number
+      data_total = data.length;
+
+      // get the max rating
+      for (var i = 0; i < data_total; i++) {
+        if (formatTime(data[i].year) in data_eachYear) {
+          data_eachYear[formatTime(data[i].year)].push(data[i]);
+
+          if (max_rating < Number(data[i].average_rating)) {
+            max_rating = Number(data[i].average_rating);
+          }
+        }
+      };
+
+      // console.log(max_rating); // should be 9, correct
+      // console.log(data_eachYear);
+
+      // get the data count
+      for (var i = 0; i < data_need.length; i++) {
+        data_count[data_need[i]] = [];
+        for (var k = 0; k <= max_rating; k++) {
+          var rate_count = 0;
+
+          for (var j = 0; j < data_eachYear[data_need[i]].length; j++) {
+            if (Number(data_eachYear[data_need[i]][j].average_rating) == k) {
+              rate_count += 1;            }
+          }
+
+          data_count[data_need[i]].push(rate_count);
+        }
+      };
+
+      // console.log(data_count[data_need[1]]);
+
+      // get the max count
+      for (key in data_count) {
+        for (var i = 0; i <= max_rating; i++) {
+          if (max_count < data_count[key][i]) {
+            max_count = data_count[key][i];
+          }
+        }
+      }
+
+      // console.log(max_count); // should be 532, correct
+
+      // sort the data for each year by its rating, ascending
+      for (var i = 0; i < data_need.length; i++) {
+        // set an empty array to store items during the sorted process
+        var temp = [];
+
+        for (var j = 0; j <= max_rating; j++) {
+          for (var k = 0; k < data_eachYear[data_need[i]].length; k++) {
+            if (data_eachYear[data_need[i]][k].average_rating == j.toString()) {
+              temp.push(data_eachYear[data_need[i]][k]);
+            }
+          }
+        }
+
+        // assign the temp array to data_eachYear 
+        data_eachYear[data_need[i]] = temp;
+      };
+
+      for (var i = 0; i < data_need.length; i++) {
+
+        top_5_user_rated[data_need[i]] = {};
+
+        for (var j = 0; j <= max_rating; j++) {
+          top_5_user_rated[data_need[i]][j] = [];
+          var temp_forMax = [];
+
+          for (var l = 0; l < 5; l++) {
+            var max = 0,
+                temp_forData = [];
+
+            for (var k = 0; k < data_eachYear[data_need[i]].length; k++) {
+              if (data_eachYear[data_need[i]][k].average_rating != j) {
+                continue;
+              } else {
+                if (max < Number(data_eachYear[data_need[i]][k].users_rated)) {
+                  if (temp_forMax.includes(Number(data_eachYear[data_need[i]][k].users_rated))) {
+                    continue;
+                  } else {
+                    max = Number(data_eachYear[data_need[i]][k].users_rated);
+                    if (temp_forData.length == 0) {
+                      temp_forData.push([
+                        data_eachYear[data_need[i]][k].name,
+                        data_eachYear[data_need[i]][k].average_rating,
+                        data_eachYear[data_need[i]][k].users_rated
+                      ]);
+                    } else {
+                      temp_forData.pop();
+                      temp_forData.push([
+                        data_eachYear[data_need[i]][k].name, 
+                        data_eachYear[data_need[i]][k].average_rating,
+                        data_eachYear[data_need[i]][k].users_rated
+                      ]);
+                    }
+                  }
+                }
+              }
+            }
+            temp_forMax.push(max);
+            top_5_user_rated[data_need[i]][j].push(temp_forData[0]);
+          }
+        }
+      }
+
+      // if (top_5_user_rated[data_need[0]][0][0] == undefined) {
+      //   console.log("Wow!");
+      // }
+
+      // pop the undefined item
+      for (var i = 0; i < data_need.length; i++) {
+        for (var j = 0; j <= max_rating; j++) {
+          for (var k = 4; k > 0; k--) {
+            if (top_5_user_rated[data_need[i]][j][k] == undefined) {
+              top_5_user_rated[data_need[i]][j].pop();
+            }
+          }
+        }
+      }
+
+      // sort the data to be ascending
+      for (var i = 0; i < data_need.length; i++) {
+        for (var j = 0; j <= max_rating; j++) {
+          var temp = [];
+          if ((top_5_user_rated[data_need[i]][j][0] != undefined) || (top_5_user_rated[data_need[i]][j].length != 1)) {
+            for (var k = top_5_user_rated[data_need[i]][j].length - 1; k >= 0 ; k--) {
+              temp.push(top_5_user_rated[data_need[i]][j][k]);
+            }
+            top_5_user_rated[data_need[i]][j] = temp;
+          }
+        }
+      }
+
+      // console.log(top_5_user_rated[data_need[4]][6][3][0]);
+
+      // used only the first 10 characters for the game's name
+      for (var i = 0; i < data_need.length; i++) {
+        for (var j = 0; j <= max_rating; j++) {
+          for (var k = 0; k < top_5_user_rated[data_need[i]][j].length; k++) {
+            var temp = "";
+            if ((top_5_user_rated[data_need[i]][j][k] != undefined) && top_5_user_rated[data_need[i]][j][k][0].length > 10) {
+              for(var l = 0; l < 10; l++) {
+                 temp += top_5_user_rated[data_need[i]][j][k][0][l];
+              }
+              top_5_user_rated[data_need[i]][j][k][0] = temp;
+            }
+          }
+        }
+      }
+
+      // console.log(top_5_user_rated[data_need[4]][6][3][0]);
+
+
+      // console.log(top_5_user_rated[data_need[0]][8]); // check and should be correct
+      // each item inside the top_5 array includes => [name, average_rating, users_rated]
+
+      // console.log(data_eachYear); // should be correct
+      // console.log(data_count);
+
+      // set up x and y scale
+      var x_scale = d3.scaleLinear()
+          .domain([0, max_rating])
+          .range([margin.left + 20, width - margin.right * 4]);
+
+      var y_scale = d3.scaleLinear()
+          .domain([0, max_count])
+          .range([height - margin.top, margin.bottom]);
+
+      // define x and y axis
+      var x_axis = d3.axisBottom(x_scale)
+          .ticks(10);
+
+      var y_axis = d3.axisLeft(y_scale)
+          .ticks(10);
+
+      // define the line
+      var line = d3.line()
+          .x(function(d, i) { return x_scale(i); }) // set the x values for the line generator
+          .y(function(d) { return y_scale(d); }) // set the y values for the line generator 
+          .curve(d3.curveLinear) // apply smoothing to the line
+
+      // var data_try = [0, 0, 0, 1, 19, 176, 524, 284, 31, 0];
+      // var data_eachYear = [];
+      // data_eachYear.push(data_try);
+      // console.log(dataset);
+
+      // define the graph
+      var svg = d3.select("body")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var svg_2 = d3.select("body")
+          .append("svg")
+          .attr("width", width + margin.left * 2+ margin.right * 2)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add x and y axis
+      svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+          .style("font-size", "15px")
+          .call(d3.axisBottom(x_scale)); 
+
+      svg.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + (margin.left + 20) + ",0)")
+          .style("font-size", "15px")
+          .call(d3.axisLeft(y_scale)); 
+
+      // add the line to the graph
+      for (var i = 0; i < data_need.length; i++) {
+        svg.append("path")
+            .datum(data_count[data_need[i]]) // 10. Binds data to the line 
+            .attr("class", "line") // Assign a class for styling 
+            .style("stroke", color(i)) // give a color
+            .attr("d", line); // 11. Calls the line generator
+      }
+
+      // add the circle symbol
+      for (var i = 0; i < data_need.length; i++) {
+        for (var j = 0; j <= max_rating; j++) {
+          svg.selectAll("circle" + j)
+              .data(data_count[data_need[i]])
+              .enter()
+              .append("circle")  
+              .attr("cx", function(d, i) { return x_scale(i); })
+              .attr("cy", function(d) { return y_scale(d); })
+              .attr("r", 10)
+              .attr("Rating", function(d, i) { return i; })
+              .attr("Count", function(d) { return d; })
+              // .attr("WhichYear", data_need[i])
+              .attr("fill", color(i))
+              .on("mouseover", showBarChart)
+              .on("mouseout", hideBarChart)
+
+          svg.selectAll("circle" + j)
+              .data(data_need)
+              .attr("WhichYear", function(d) { return d; })
+
+        }
+
+        // add the legend
+        svg.append("rect")
+          .attr("x", width - margin.right * 5)
+          .attr("y", margin.top + i * 30)
+          .attr('width', 20)
+          .attr('height', 20)
+          .attr("fill", color(i))
+
+        svg.append("text")
+          .attr("x", width - margin.right * 5 + 30)
+          .attr("y", margin.top + 10 + i * 30)
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .attr("text-anchor", "left")
+          .style("alignment-baseline", "middle")
+          .text(data_need[i]);
+      }
+
+      // add labels of x and y axis
+      svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("x", - height / 2)
+          .attr("y", 0)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Count");
+
+      svg.append("text")
+          .attr("x", width / 2)
+          .attr("y", height + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Rating");
+
+      // add title
+      svg.append("text")
+          .attr("x", width / 2 - margin.right * 2)
+          .attr("y", margin.top / 2)
+          .style("font-size", "50px")
+          .style("font-weight", 700)
+          .style("text-anchor", "middle")
+          .text("Board games by Rating 2015-2019");
+
+      // Add my GT username
+      svg.append("text")
+          .attr("x", width / 2 - margin.right * 2)
+          .attr("y", margin.top + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "steelblue")
+          .text("tliao32")
+
+      // console.log(top_5_user_rated);
+      // console.log(data_count["2019"]);
+
+      // attach each point to its related year
+      var point_year = {}
+      for (var i = 0; i < data_need.length; i++) {
+        point_year[data_need[i]] = [];
+
+        for (var j = 0; j <= max_rating; j++) {
+          point_year[data_need[i]].push([j, data_count[data_need[i]][j]]);
+        }
+      }
+
+      // console.log(point_year);
+
+      // add the mouse on / out function
+      function showBarChart() {
+        d3.select(this)
+          .attr("r", 10 * 2);
+        var Rating = d3.select(this).attr("Rating");
+        // console.log(Rating);
+        var Count = d3.select(this).attr("Count");
+        // console.log(Count);
+
+        // console.log([Number(Rating), Number(Count)]);
+
+        var Year = "";
+        for (var i = 0; i < data_need.length; i++) {
+          for (var j = 0; j <= max_rating; j++) {
+            if (point_year[data_need[i]][j][0] == Number(Rating) &&
+                point_year[data_need[i]][j][1] == Number(Count)) {
+              Year += data_need[i];
+              break;
+            }
+          }
+        }
+
+        // console.log(Year);
+        if (Year.length < 5) {        
+          if (top_5_user_rated[Year][Number(Rating)][0] != undefined) {
+            var top_5 = top_5_user_rated[Year][Number(Rating)];
+            // console.log(top_5);
+
+            var n = top_5.length;
+
+            // define scale
+            var x_scale_2 = d3.scaleLinear()
+                .domain([0, top_5[n-1][2]])
+                .range([margin.left * 5, width - margin.right])
+
+            var y_scale_2 = d3.scaleBand()
+                .domain(top_5.map(function(d) {
+                  return d[0];
+                }))
+                .range([height - margin.top * 2, margin.bottom * 6])
+
+            // define axis
+            var x_axis_2 = d3.axisBottom(x_scale_2)
+                .ticks(10);
+            var y_axis_2 = d3.axisLeft(y_scale_2)
+                .ticks(10);
+
+            // add axis
+            svg_2.append("g")
+                .attr("class", "x axis 2")
+                .attr("transform", "translate(50," + (height - margin.bottom * 2) + ")")
+                .style("font-size", "20px")
+                .call(x_axis_2);
+
+            svg_2.append("g")
+                .attr("class", "y axis 2")
+                .attr("transform", "translate(" + (margin.left * 6) + ",0)")
+                .call(y_axis_2)
+                .selectAll("text")
+                .style("font-size", "20px")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", "-.55em");
+                
+            // add bar chart
+            svg_2.selectAll("bar")
+                .data(top_5)
+                .enter()
+                .append("rect")
+                .attr("class", "bar2")
+                .attr("x", 300)
+                .attr("y", function(d) {return (15 + y_scale_2(d[0]))})
+                .attr("width", function(d) {return x_scale_2(d[2]) - 260})
+                .attr("height", 60)
+                .attr("fill", "pink");
+
+            // add labels of x and y axis
+            svg_2.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("x", - height / 2 - 50)
+                .attr("y", 100)
+                .style("font-size", "35px")
+                .style("font-weight", "bold")
+                .style("text-anchor", "middle")
+                .text("Games");
+
+            svg_2.append("text")
+                .attr("x", width / 2 + 150)
+                .attr("y", height + 20)
+                .style("font-size", "35px")
+                .style("font-weight", "bold")
+                .style("text-anchor", "middle")
+                .text("Number of Users");
+
+            // add title
+            svg_2.append("text")
+                .attr("x", width / 2 + margin.left * 2)
+                .attr("y", margin.top * 4)
+                .style("font-size", "40px")
+                .style("font-weight", 700)
+                .style("text-anchor", "middle")
+                .text("Top 5 most rated games for year " + Year + " with Rating " + Rating);
+
+            // // add vertical line 
+            // svg_2.append("line")
+            //     .style("stroke", "black")
+            //     .attr("x1", x(d[0]) + x.rangeBand()/2)
+            //     .attr("x2", x(d[0]) + x.rangeBand()/2)
+            //     .attr("y1", y(0))
+            //     .attr("y2", y(d[1]));
+          }
+        }
+      }
+
+      function hideBarChart() {
+        d3.select(this)
+          .attr("r", 10);
+
+        svg_2.selectAll("*")
+            .remove();
+      }
+
+
+  })
+  </script>
+
+
+
+
+
+

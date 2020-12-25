@@ -1,0 +1,1 @@
+Sometimes our data value's range is quite large. Take the data = [1, 10, 100, 10000, 100000000, 10000000000000000] as an example. When we implemented a linear scale bar chart, the bar size will show almost the same for the first three items. However, using Sqrt and Log scale can prevent this problem. Therefore, Sqrt and Log scale are much better.

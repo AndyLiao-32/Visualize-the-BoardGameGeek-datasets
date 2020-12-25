@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<!-- run: http-server & -->
+<!-- run in the terminal : python -m http.server 8888 -->
+<!-- To kill local server:      (here is which local server)
+                                  |
+                                  V
+run in terminal: sudo lsof -iTCP:8888 -sTCP:LISTEN
+Then run: kill -9 PIN_number -->
+<meta charset="utf-8">
+<style>
+
+  /*the styling was referenced to the tutorial provided by the assignment pdf*/
+  .line {
+    fill: none;
+    stroke: #ffab00;
+    stroke-width: 3;
+  }
+    
+  .overlay {
+    fill: none;
+    pointer-events: all;
+  }
+
+  .dot {
+      fill: #ffab00;
+      stroke: #fff;
+  }
+    
+  .focus circle {
+    fill: none;
+    stroke: steelblue;
+  }
+
+</style>
+
+<head>
+  <title>Linecharts of Boardgame Ratings</title>
+</head>
+
+<body>
+  <!-- These are for using the d3 schemeTableau10 color -->
+  <script src="https://d3js.org/d3-color.v2.min.js"></script>
+  <script src="https://d3js.org/d3-interpolate.v2.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v2.min.js"></script>
+
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+
+  <script>
+    // From the tutorial, use the window's margin setting
+    var margin = { top: 50, bottom: 50, left: 50, right: 50},
+        width = window.innerWidth - margin.left - margin.right,
+        height = window.innerHeight - margin.top - margin.bottom;
+
+    var parseDate = d3.timeParse("%Y-%m-%d"),
+        formatTime = d3.timeFormat("%b %d");
+
+    // using d3 schemeTableau10 color
+    var color = [];
+
+    for (var i = 0; i < 8; i++) {
+      color.push(d3.schemeTableau10[i]);
+    };
+
+
+    // load in the data file
+    d3.dsv(",", "boardgame_ratings.csv").then(function(data){
+
+      var data_total = 0;
+
+      var data_name = {
+            name: [
+              "Catan", 
+              "Dominion", 
+              "Codenames", 
+              "Terraforming Mars", 
+              "Gloomhaven", 
+              "Magic: The Gathering", 
+              "Dixit", 
+              "Monopoly"
+            ],
+            count: [
+              "Catan=count", 
+              "Dominion=count", 
+              "Codenames=count", 
+              "Terraforming Mars=count",
+              "Gloomhaven=count", 
+              "Magic: The Gathering=count", 
+              "Dixit=count", 
+              "Monopoly=count"
+            ], 
+            rank: [
+              "Catan=rank", 
+              "Dominion=rank", 
+              "Codenames=rank", 
+              "Terraforming Mars=rank",
+              "Gloomhaven=rank", 
+              "Magic: The Gathering=rank", 
+              "Dixit=rank", 
+              "Monopoly=rank"
+            ]
+          };
+
+      data.forEach(function(d) {
+        d["date"] = parseDate(d["date"]);
+
+        for (var i = 0; i < 8; i++) {
+          d[data_name.count[i]] = + d[data_name.count[i]];
+          d[data_name.rank[i]] = + d[data_name.rank[i]];
+        }
+
+        data_total++;
+      })
+
+      // check for data input successfully or not
+      // console.log(data);
+      // console.log(data_total);
+      // for (var j = 2; j < 46; j += 3) {
+      //   console.log(data[j]);
+      // }
+
+      console.log(data_name);
+
+      // set up x and y scale
+      var x_scale = d3.scaleTime()
+          .domain([d3.min(data, function(d) {
+            return d["date"]; 
+          }), d3.max(data, function(d) {
+            return d["date"]; 
+          })])
+          .range([margin.left + 20, width - margin.right * 4]);
+
+      var y_scale = d3.scaleLinear()
+          .domain([0, d3.max(data, function(d) {
+            return Math.max(d[data_name.count[0]], d[data_name.count[1]], d[data_name.count[2]], d[data_name.count[3]], d[data_name.count[4]], d[data_name.count[5]], d[data_name.count[6]], d[data_name.count[7]]); 
+          })])
+          .range([height - margin.top, margin.bottom]);
+
+      // define x and y axis
+      var x_axis = d3.axisBottom(x_scale).tickFormat(formatTime)
+          .tickValues(d3.timeMonth.every(3).range(d3.min(data, function(d) { 
+            return d["date"]; 
+          }), d3.max(data, function(d) { 
+            return d["date"]; 
+          })));
+
+      var y_axis = d3.axisLeft(y_scale)
+          .ticks(10);
+
+      //define lines
+      var lines = [];
+
+      // add each line into lines array
+      for (var i = 0; i < 8; i++) {
+        lines.push(d3.line()
+              .x(function(d) { 
+                return x_scale(d["date"]); 
+              }) 
+              .y(function(d) { 
+                return y_scale(d[data_name.count[i]]); 
+              })  
+              .curve(d3.curveNatural));
+      };
+
+      // For figure 1, Q3 (a) Basic line chart
+      var svg_1 = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add x and y axis
+      svg_1.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+          .style("font-size", "15px")
+          .call(x_axis);
+
+      svg_1.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + (margin.left + 20) + ",0)")
+          .style("font-size", "15px")
+          .call(y_axis);
+
+      // add labels of x and y axis
+      svg_1.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("x", - height / 2)
+          .attr("y", 0)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Num of Ratings");
+
+      svg_1.append("text")
+          .attr("x", width / 2)
+          .attr("y", height + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Month");
+
+      // add title
+      svg_1.append("text")
+          .attr("x", width / 2 )
+          .attr("y", margin.top / 2)
+          .style("font-size", "50px")
+          .style("font-weight", 700)
+          .style("text-anchor", "middle")
+          .text("Number of Ratings 2016-2020");
+
+      // add the line to the linechart
+      for (var i = 0; i < 8; i++) {
+        svg_1.append("path")
+          .datum(data)
+          .attr("class", "line")
+          .style("stroke", color[i])
+          .attr("d", lines[i]);
+      };
+
+      // add each board game’s name next to its corresponding line
+      for (var i = 0; i < 8; i++) {
+        svg_1.append("text")
+          .attr("transform", 
+            "translate(" + (width - margin.right * 4 + 10) + "," + (y_scale(data[data_total-1][data_name.count[i]]) - 5) + ")")
+          .attr("dy", ".35em")
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .attr("text-anchor", "start")
+          .style("fill", color[i])
+          .text(data_name.name[i]);
+      };
+
+      // figure 2, Q3 (b) Adding board game rankings
+      var svg_2 = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add x and y axis
+      svg_2.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+          .style("font-size", "15px")
+          .call(x_axis);
+
+      svg_2.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + (margin.left + 20) + ",0)")
+          .style("font-size", "15px")
+          .call(y_axis);
+
+      // add labels of x and y axis
+      svg_2.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("x", - height / 2)
+          .attr("y", 0)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Num of Ratings");
+
+      svg_2.append("text")
+          .attr("x", width / 2)
+          .attr("y", height + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Month");
+
+      // add title
+      svg_2.append("text")
+          .attr("x", width / 2 )
+          .attr("y", margin.top / 2)
+          .style("font-size", "50px")
+          .style("font-weight", 700)
+          .style("text-anchor", "middle")
+          .text("Number of Ratings 2016-2020 with Rankings");
+
+      // add the line to the linechart
+      for (var i = 0; i < 8; i++) {
+        svg_2.append("path")
+          .datum(data)
+          .attr("class", "line")
+          .style("stroke", color[i])
+          .attr("d", lines[i]);
+      };
+
+      // add each board game’s name next to its corresponding line
+      for (var i = 0; i < 8; i++) {
+        svg_2.append("text")
+          .attr("transform", 
+            "translate(" + (width - margin.right * 4 + 10) + "," + (y_scale(data[data_total-1][data_name.count[i]]) - 5) + ")")
+          .attr("dy", ".35em")
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .attr("text-anchor", "start")
+          .style("fill", color[i])
+          .text(data_name.name[i]);
+      };
+
+      // add the circle symbol
+      for (var i = 0; i < 8; i++) {
+        if ((data_name.count[i] == "Catan=count") || 
+            (data_name.count[i] =="Codenames=count") ||
+            (data_name.count[i] == "Terraforming Mars=count") ||
+            (data_name.count[i] == "Gloomhaven=count")) {
+          for (var j = 2; j < 46; j += 3) {
+            svg_2.selectAll("circle" + j)
+              .data(data)
+              .enter()
+              .append("circle")  
+              .attr("cx", function(d) {return x_scale(data[j]["date"])})
+              .attr("cy", function(d) {return y_scale(data[j][data_name.count[i]])})
+              .attr("r", 20)
+              .attr("fill", color[i])
+
+            svg_2.append("text")
+              .attr("x", (function(d) {return x_scale(data[j]["date"])}))
+              .attr("y", (function(d) {return y_scale(data[j][data_name.count[i]])}))
+              .style("font-size", "12px")
+              .style("font-weight", "bold")
+              .style("text-anchor", "middle")
+              .style("fill", "white")
+              .text(data[j][data_name.rank[i]])
+          }
+        }
+      };
+
+      // add the legend to explain the symbol
+      svg_2.append("circle")
+          .attr("cx", width - margin.right)
+          .attr("cy", height - margin.bottom - 20)
+          .attr("r", 30)
+          .attr("fill", "black")
+
+      // add text inside the symbol
+      svg_2.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom - 15)
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "white")
+          .text("rank")
+
+      // add explanation of the symbol 
+      svg_2.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom / 2)
+          .style("font-size", "15px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "black")
+          .text("Boardgame Rank")
+
+
+      // figure 3, Q3 (c-1) square root scale
+      // First, convert our original scale into sqrt scale, only for y direction
+      var y_sqrt_scale = d3.scaleSqrt()
+          .domain([d3.min(data, function(d) {
+            return Math.min(d[data_name.count[0]], d[data_name.count[1]], d[data_name.count[2]], d[data_name.count[3]], d[data_name.count[4]], d[data_name.count[5]], d[data_name.count[6]], d[data_name.count[7]]); 
+          }), d3.max(data, function(d) {
+            return Math.max(d[data_name.count[0]], d[data_name.count[1]], d[data_name.count[2]], d[data_name.count[3]], d[data_name.count[4]], d[data_name.count[5]], d[data_name.count[6]], d[data_name.count[7]]); 
+          })])
+          .range([height - margin.top, margin.bottom]); 
+
+      var y_sqrt_axis = d3.axisLeft(y_sqrt_scale)
+          .ticks(10);
+
+      //define lines
+      var lines_sqrt = [];
+
+      // add each line into lines array
+      for (var i = 0; i < 8; i++) {
+        lines_sqrt.push(d3.line()
+              .x(function(d) { 
+                return x_scale(d["date"]); 
+              }) 
+              .y(function(d) { 
+                return y_sqrt_scale(d[data_name.count[i]]); 
+              })  
+              .curve(d3.curveNatural));
+      };
+
+      var svg_3 = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add x and y axis
+      svg_3.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+          .style("font-size", "15px")
+          .call(x_axis);
+
+      svg_3.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + (margin.left + 20) + ",0)")
+          .style("font-size", "15px")
+          .call(y_sqrt_axis);
+
+      // add labels of x and y axis
+      svg_3.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("x", - height / 2)
+          .attr("y", 0)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Num of Ratings");
+
+      svg_3.append("text")
+          .attr("x", width / 2)
+          .attr("y", height + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Month");
+
+      // add title
+      svg_3.append("text")
+          .attr("x", width / 2 )
+          .attr("y", margin.top / 2)
+          .style("font-size", "50px")
+          .style("font-weight", 700)
+          .style("text-anchor", "middle")
+          .text("Number of Ratings 2016-2020 (Square root Scale)");
+
+      // add the line to the linechart
+      for (var i = 0; i < 8; i++) {
+        svg_3.append("path")
+          .datum(data)
+          .attr("class", "line")
+          .style("stroke", color[i])
+          .attr("d", lines_sqrt[i]);
+      };
+
+      // add each board game’s name next to its corresponding line
+      for (var i = 0; i < 8; i++) {
+        svg_3.append("text")
+          .attr("transform", 
+            "translate(" + (width - margin.right * 4 + 10) + "," + (y_sqrt_scale(data[data_total-1][data_name.count[i]]) - 5) + ")")
+          .attr("dy", ".35em")
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .attr("text-anchor", "start")
+          .style("fill", color[i])
+          .text(data_name.name[i]);
+      };
+
+      // add the circle symbol
+      for (var i = 0; i < 8; i++) {
+        if ((data_name.count[i] == "Catan=count") || 
+            (data_name.count[i] =="Codenames=count") ||
+            (data_name.count[i] == "Terraforming Mars=count") ||
+            (data_name.count[i] == "Gloomhaven=count")) {
+          for (var j = 2; j < 46; j += 3) {
+            svg_3.selectAll("circle"+j)
+              .data(data)
+              .enter()
+              .append("circle")  
+              .attr("cx", function(d) {return x_scale(data[j]["date"])})
+              .attr("cy", function(d) {return y_sqrt_scale(data[j][data_name.count[i]])})
+              .attr("r", 20)
+              .attr("fill", color[i])
+
+            svg_3.append("text")
+              .attr("x", (function(d) {return x_scale(data[j]["date"])}))
+              .attr("y", (function(d) {return y_sqrt_scale(data[j][data_name.count[i]])}))
+              .style("font-size", "12px")
+              .style("font-weight", "bold")
+              .style("text-anchor", "middle")
+              .style("fill", "white")
+              .text(data[j][data_name.rank[i]])
+          }
+        }
+      };
+
+      // add the legend to explain the symbol
+      svg_3.append("circle")
+          .attr("cx", width - margin.right)
+          .attr("cy", height - margin.bottom - 20)
+          .attr("r", 30)
+          .attr("fill", "black")
+
+      // add text inside the symbol
+      svg_3.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom - 15)
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "white")
+          .text("rank")
+
+      // add explanation of the symbol 
+      svg_3.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom / 2)
+          .style("font-size", "15px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "black")
+          .text("Boardgame Rank")
+
+      // figure 4, Q3 (c-2) log scale
+      // First, convert our original scale into log scale, only for y direction
+      var y_log_scale = d3.scaleLog()
+          .domain([(1 / d3.max(data, function(d) {
+            return Math.max(d[data_name.count[0]], d[data_name.count[1]], d[data_name.count[2]], d[data_name.count[3]], d[data_name.count[4]], d[data_name.count[5]], d[data_name.count[6]], d[data_name.count[7]]); 
+          })), d3.max(data, function(d) {
+            return Math.max(d[data_name.count[0]], d[data_name.count[1]], d[data_name.count[2]], d[data_name.count[3]], d[data_name.count[4]], d[data_name.count[5]], d[data_name.count[6]], d[data_name.count[7]]); 
+          })])
+          .range([height - margin.top, margin.bottom]); 
+
+      var y_log_axis = d3.axisLeft(y_log_scale)
+          .ticks(10);
+
+      //define lines
+      var lines_log = [];
+
+      // add each line into lines array
+      for (var i = 0; i < 8; i++) {
+        lines_log.push(d3.line()
+              .x(function(d) { 
+                return x_scale(d["date"]); 
+              }) 
+              .y(function(d) { 
+                return y_log_scale(d[data_name.count[i]]); 
+              })  
+              .curve(d3.curveNatural));
+      };
+
+      var svg_4 = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add x and y axis
+      svg_4.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+          .style("font-size", "15px")
+          .call(x_axis);
+
+      svg_4.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + (margin.left + 20) + ",0)")
+          .style("font-size", "15px")
+          .call(y_log_axis);
+
+      // add labels of x and y axis
+      svg_4.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("x", - height / 2)
+          .attr("y", 0)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Num of Ratings");
+
+      svg_4.append("text")
+          .attr("x", width / 2)
+          .attr("y", height + 20)
+          .style("font-size", "30px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .text("Month");
+
+      // add title
+      svg_4.append("text")
+          .attr("x", width / 2 )
+          .attr("y", margin.top / 2)
+          .style("font-size", "50px")
+          .style("font-weight", 700)
+          .style("text-anchor", "middle")
+          .text("Number of Ratings 2016-2020 (Log Scale)");
+
+      // add the line to the linechart
+      for (var i = 0; i < 8; i++) {
+        svg_4.append("path")
+          .datum(data)
+          .attr("class", "line")
+          .style("stroke", color[i])
+          .attr("d", lines_log[i]);
+      };
+
+      // add each board game’s name next to its corresponding line
+      for (var i = 0; i < 8; i++) {
+        svg_4.append("text")
+          .attr("transform", 
+            "translate(" + (width - margin.right * 4 + 10) + "," + (y_log_scale(data[data_total-1][data_name.count[i]]) - 5) + ")")
+          .attr("dy", ".35em")
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .attr("text-anchor", "start")
+          .style("fill", color[i])
+          .text(data_name.name[i]);
+      };
+
+      // add the circle symbol
+      for (var i = 0; i < 8; i++) {
+        if ((data_name.count[i] == "Catan=count") || 
+            (data_name.count[i] =="Codenames=count") ||
+            (data_name.count[i] == "Terraforming Mars=count") ||
+            (data_name.count[i] == "Gloomhaven=count")) {
+          for (var j = 2; j < 46; j += 3) {
+            svg_4.selectAll("circle"+j)
+              .data(data)
+              .enter()
+              .append("circle")  
+              .attr("cx", function(d) {return x_scale(data[j]["date"])})
+              .attr("cy", function(d) {return y_log_scale(data[j][data_name.count[i]])})
+              .attr("r", 20)
+              .attr("fill", color[i])
+
+            svg_4.append("text")
+              .attr("x", (function(d) {return x_scale(data[j]["date"])}))
+              .attr("y", (function(d) {return y_log_scale(data[j][data_name.count[i]])}))
+              .style("font-size", "12px")
+              .style("font-weight", "bold")
+              .style("text-anchor", "middle")
+              .style("fill", "white")
+              .text(data[j][data_name.rank[i]])
+          }
+        }
+      };
+
+      // add the legend to explain the symbol
+      svg_4.append("circle")
+          .attr("cx", width - margin.right)
+          .attr("cy", height - margin.bottom - 20)
+          .attr("r", 30)
+          .attr("fill", "black")
+
+      // add text inside the symbol
+      svg_4.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom - 15)
+          .style("font-size", "20px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "white")
+          .text("rank")
+
+      // add explanation of the symbol 
+      svg_4.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height - margin.bottom / 2)
+          .style("font-size", "15px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "black")
+          .text("Boardgame Rank")
+
+      // Add my GT username
+      svg_4.append("text")
+          .attr("x", width - margin.right)
+          .attr("y", height + 30)
+          .style("font-size", "25px")
+          .style("font-weight", "bold")
+          .style("text-anchor", "middle")
+          .style("fill", "steelblue")
+          .text("tliao32")
+
+
+
+
+  });
+  </script>
+</body>
+</html>
